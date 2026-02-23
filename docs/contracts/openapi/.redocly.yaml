@@ -1,0 +1,24 @@
+# Redocly configuration for OpenAPI spec linting.
+# Bundling uses swagger-cli (preserves original component names for oapi-codegen).
+# Usage:
+#   npx @redocly/cli lint --config .redocly.yaml ingestion/v1/specs.yaml
+#   npx @apidevtools/swagger-cli bundle ingestion/v1/specs.yaml -o ingestion/v1/public/swagger-pact.json -t json
+
+extends:
+  - recommended
+
+rules:
+  no-unused-components: "warn"
+  operation-operationId-unique: "error"
+  operation-operationId: "error"
+  path-declaration-must-exist: "error"
+  # Security is enforced upstream by Traefik — not at the application layer.
+  security-defined: "off"
+  # License info is intentionally omitted for internal technical challenge.
+  info-license: "off"
+  # Health/liveness/readiness probes return 503, not 4xx.
+  operation-4xx-response: "off"
+
+apis:
+  ingestion@v1:
+    root: "ingestion/v1/specs.yaml"

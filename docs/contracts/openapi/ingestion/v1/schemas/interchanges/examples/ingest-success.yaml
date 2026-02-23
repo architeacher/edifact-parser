@@ -1,0 +1,8 @@
+summary: "Successful MSCONS ingestion"
+value:
+  interchange_id: "019426a0-1234-7000-8000-000000000001"
+  status: "completed"
+  message_summary:
+    total: 3
+    by_type:
+      MSCONS: 3

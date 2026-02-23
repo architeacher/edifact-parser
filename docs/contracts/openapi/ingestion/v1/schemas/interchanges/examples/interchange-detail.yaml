@@ -1,0 +1,21 @@
+summary: "MSCONS interchange with active version"
+value:
+  id: "019426a0-1234-7000-8000-000000000001"
+  sender_id: "9900000000003"
+  sender_qualifier: "ZZZ"
+  receiver_id: "9900000000007"
+  receiver_qualifier: "ZZZ"
+  prepared_at: "2025-06-15T10:30:00Z"
+  reference: "MSG00001"
+  status: "completed"
+  created_at: "2025-06-15T10:30:05Z"
+  active_version:
+    id: "019426a0-5678-7000-8000-000000000002"
+    version_number: 1
+    parser_version: "1.0.0"
+    format_version: "MSCONS_2405"
+    created_at: "2025-06-15T10:30:05Z"
+  message_summary:
+    total: 3
+    by_type:
+      MSCONS: 3

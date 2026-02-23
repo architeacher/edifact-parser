@@ -1,0 +1,7 @@
+type: "object"
+required: ["version_number"]
+properties:
+  version_number:
+    type: "integer"
+    minimum: 1
+    description: "The version number to restore as active"

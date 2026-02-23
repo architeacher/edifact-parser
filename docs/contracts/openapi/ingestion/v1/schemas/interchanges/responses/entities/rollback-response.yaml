@@ -1,0 +1,9 @@
+type: "object"
+required: ["interchange_id", "active_version_number"]
+properties:
+  interchange_id:
+    type: "string"
+    format: "uuid"
+  active_version_number:
+    type: "integer"
+    description: "The version number now active after rollback"

@@ -1,0 +1,330 @@
+openapi: "3.0.3"
+
+info:
+  title: "EDIFACT Ingestion API"
+  version: "1.0.0"
+  description: >
+    Ingestion system for incoming EDIFACT messages in the German electricity
+    retail market. Accepts files, parses into individual messages, persists
+    structured data, and supports versioned reprocessing.
+  contact:
+    name: "Nomos Technical Challenge"
+
+servers:
+  - url: "http://api.ingestion.dev/v1"
+    description: "Local development (via Traefik)"
+
+# No securitySchemes are defined. Authentication is enforced upstream by Traefik
+# (reverse proxy). All service endpoints are unauthenticated at the application layer.
+
+paths:
+  # Router note: /interchanges/reprocess MUST appear before /interchanges/{id}
+  # in the chi router to prevent the literal path segment from matching {id}.
+  # oapi-codegen v2 strict-server generates routes in spec order.
+
+  /interchanges:
+    post:
+      operationId: "ingestFile"
+      summary: "Ingest an EDIFACT file"
+      description: >
+        Synchronously parses and persists the submitted EDIFACT file.
+        Returns the full result (interchange ID, final status, message summary)
+        in a single response. Idempotent — resubmission of an existing file
+        (same SHA-256) returns the same result without reprocessing.
+      tags: ["Interchanges"]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: "object"
+              required: ["file"]
+              properties:
+                file:
+                  type: "string"
+                  format: "binary"
+                  description: "EDIFACT file content. Maximum size: 10 MB (10,485,760 bytes)."
+      responses:
+        "200":
+          description: "File already ingested (idempotent re-submission)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestResponse"
+        "201":
+          description: "File successfully ingested"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestResponse"
+        "413":
+          description: "File exceeds the 10 MB size limit"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: "File failed structural validation (missing UNB/UNZ envelope)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /interchanges/reprocess:
+    post:
+      operationId: "reprocessInterchanges"
+      summary: "Bulk reprocess interchanges by filter"
+      description: >
+        Re-parses all interchanges matching the filter criteria using current
+        parsing rules, creating a new processing version for each. Returns a
+        summary of results synchronously. Zero matches returns a zero-count
+        summary, not an error.
+      tags: ["Interchanges"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReprocessFilter"
+      responses:
+        "200":
+          description: "Reprocessing completed (including partial failures)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReprocessResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /interchanges/{id}:
+    get:
+      operationId: "getInterchange"
+      summary: "Retrieve an interchange by ID"
+      description: >
+        Returns interchange metadata, the active processing version, and
+        message count summary.
+      tags: ["Interchanges"]
+      parameters:
+        - $ref: "#/components/parameters/InterchangeId"
+      responses:
+        "200":
+          description: "Interchange found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InterchangeDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /interchanges/{id}/raw:
+    get:
+      operationId: "getRawFile"
+      summary: "Download the original EDIFACT file content"
+      description: >
+        Returns the raw, unmodified EDIFACT bytes that were originally submitted.
+      tags: ["Interchanges"]
+      parameters:
+        - $ref: "#/components/parameters/InterchangeId"
+      responses:
+        "200":
+          description: "Raw EDIFACT file content"
+          content:
+            application/octet-stream:
+              schema:
+                type: "string"
+                format: "binary"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /interchanges/{id}/rollback:
+    post:
+      operationId: "rollbackVersion"
+      summary: "Roll back to a previous processing version"
+      description: >
+        Restores the specified processing version as the active one without
+        deleting the current version. Emits a version.rolled_back domain event.
+      tags: ["Interchanges"]
+      parameters:
+        - $ref: "#/components/parameters/InterchangeId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RollbackRequest"
+      responses:
+        "200":
+          description: "Rollback completed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RollbackResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: "Target version does not exist for this interchange"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /messages:
+    get:
+      operationId: "listMessages"
+      summary: "List parsed messages with filtering"
+      description: >
+        Returns messages from the active processing version by default.
+        Filter by subscription identifier, message type, interchange ID,
+        or processing version ID. Supports cursor-based pagination.
+      tags: ["Messages"]
+      parameters:
+        - name: "subscription_id"
+          in: "query"
+          schema:
+            type: "string"
+            format: "uuid"
+        - name: "message_type"
+          in: "query"
+          schema:
+            type: "string"
+            example: "MSCONS"
+        - name: "interchange_id"
+          in: "query"
+          schema:
+            type: "string"
+            format: "uuid"
+        - name: "processing_version_id"
+          in: "query"
+          schema:
+            type: "string"
+            format: "uuid"
+        - name: "limit"
+          in: "query"
+          schema:
+            type: "integer"
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: "cursor"
+          in: "query"
+          schema:
+            type: "string"
+            description: >
+              Opaque base64url-encoded cursor from the next_cursor field of a
+              previous response. Omit on first page.
+      responses:
+        "200":
+          description: "Message list"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /health:
+    get:
+      operationId: "getHealth"
+      summary: "Combined health status"
+      description: "Reports liveness and readiness including dependency connectivity."
+      tags: ["System"]
+      security: []
+      responses:
+        "200":
+          description: "Healthy"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "503":
+          description: "One or more dependencies unhealthy"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /liveness:
+    get:
+      operationId: "getLiveness"
+      summary: "Liveness probe"
+      description: "Returns 200 if the process is alive."
+      tags: ["System"]
+      security: []
+      responses:
+        "200":
+          description: "Process alive"
+        "503":
+          description: "Process should be restarted"
+
+  /readiness:
+    get:
+      operationId: "getReadiness"
+      summary: "Readiness probe"
+      description: "Returns 200 when PostgreSQL and Kafka connections are established."
+      tags: ["System"]
+      security: []
+      responses:
+        "200":
+          description: "Ready to serve traffic"
+        "503":
+          description: "Not ready (dependency unavailable)"
+
+components:
+
+  parameters:
+    InterchangeId:
+      name: "id"
+      in: "path"
+      required: true
+      schema:
+        type: "string"
+        format: "uuid"
+      description: "Interchange UUID"
+
+  responses:
+    NotFound:
+      $ref: "schemas/common/responses/errors/not-found.yaml"
+    BadRequest:
+      $ref: "schemas/common/responses/errors/bad-request.yaml"
+    InternalError:
+      $ref: "schemas/common/responses/errors/server-error.yaml"
+
+  schemas:
+    ErrorResponse:
+      $ref: "schemas/common/responses/errors/entities/error.yaml"
+    IngestResponse:
+      $ref: "schemas/interchanges/responses/entities/ingest.yaml"
+    MessageSummary:
+      $ref: "schemas/common/entities/message-summary.yaml"
+    InterchangeDetail:
+      $ref: "schemas/interchanges/responses/entities/interchange-detail.yaml"
+    ProcessingVersionSummary:
+      $ref: "schemas/interchanges/responses/entities/processing-version-summary.yaml"
+    ReprocessFilter:
+      $ref: "schemas/interchanges/requests/entities/reprocess-filter.yaml"
+    ReprocessResult:
+      $ref: "schemas/interchanges/responses/entities/reprocess-result.yaml"
+    ReprocessFailure:
+      $ref: "schemas/interchanges/responses/entities/reprocess-failure.yaml"
+    RollbackRequest:
+      $ref: "schemas/interchanges/requests/entities/rollback-request.yaml"
+    RollbackResponse:
+      $ref: "schemas/interchanges/responses/entities/rollback-response.yaml"
+    MessageList:
+      $ref: "schemas/messages/responses/entities/message-list.yaml"
+    Message:
+      $ref: "schemas/messages/responses/entities/message.yaml"
+    HealthResponse:
+      $ref: "schemas/common/responses/system/entities/health.yaml"

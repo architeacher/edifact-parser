@@ -1,0 +1,8 @@
+type: "object"
+required: ["interchange_id", "reason"]
+properties:
+  interchange_id:
+    type: "string"
+    format: "uuid"
+  reason:
+    type: "string"

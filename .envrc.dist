@@ -1,0 +1,13 @@
+# Docker Compose
+export COMPOSE_FILE="deployment/docker/compose.yaml"
+
+# PostgreSQL
+export POSTGRES_USER="ingestion"
+export POSTGRES_PASSWORD="ingestion_secret"
+export POSTGRES_DB="edifact"
+export POSTGRES_HOST="postgres"
+export POSTGRES_PORT="5432"
+
+# Kafka
+export KAFKA_BROKERS="kafka:9092"
+export KAFKA_TOPIC="edifact.events"

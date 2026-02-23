@@ -1,0 +1,14 @@
+package: public
+generate:
+  chi-server: true
+  strict-server: true
+  models: true
+  embedded-spec: true
+output: ../adapters/inbound/http/handlers/public/http_server_gen.go
+output-options:
+  skip-prune: false
+  nullable-type: true
+  include-tags:
+    - Interchanges
+    - Messages
+    - System

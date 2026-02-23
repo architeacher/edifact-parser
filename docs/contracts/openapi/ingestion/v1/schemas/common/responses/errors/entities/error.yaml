@@ -1,0 +1,20 @@
+type: "object"
+required: ["code", "message", "correlation_id"]
+properties:
+  code:
+    type: "string"
+    enum:
+      - "FILE_TOO_LARGE"
+      - "INVALID_EDIFACT"
+      - "DUPLICATE_DETECTED"
+      - "NOT_FOUND"
+      - "CONFLICT"
+      - "BAD_REQUEST"
+      - "INTERNAL_ERROR"
+    description: "Machine-readable error code"
+  message:
+    type: "string"
+    description: "Human-readable description"
+  correlation_id:
+    type: "string"
+    description: "X-Correlation-ID from request headers"

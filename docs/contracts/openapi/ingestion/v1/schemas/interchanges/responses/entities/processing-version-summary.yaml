@@ -1,0 +1,15 @@
+type: "object"
+required: ["id", "version_number", "parser_version", "format_version", "created_at"]
+properties:
+  id:
+    type: "string"
+    format: "uuid"
+  version_number:
+    type: "integer"
+  parser_version:
+    type: "string"
+  format_version:
+    type: "string"
+  created_at:
+    type: "string"
+    format: "date-time"

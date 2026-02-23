@@ -1,0 +1,12 @@
+type: "object"
+required: ["total", "by_type"]
+properties:
+  total:
+    type: "integer"
+  by_type:
+    type: "object"
+    additionalProperties:
+      type: "integer"
+    example:
+      MSCONS: 3
+      INVOIC: 1
