@@ -1,0 +1,5 @@
+description: "Unexpected internal server error"
+content:
+  application/json:
+    schema:
+      $ref: "entities/error.yaml"

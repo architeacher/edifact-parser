@@ -1,0 +1,8 @@
+description: "Healthy"
+content:
+  application/json:
+    schema:
+      $ref: "entities/health.yaml"
+    examples:
+      healthy:
+        $ref: "examples/health.yaml#/healthy"

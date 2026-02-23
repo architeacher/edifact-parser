@@ -1,0 +1,44 @@
+# Source control
+.git/
+.gitignore
+
+# Go artifacts
+vendor/
+*.exe
+*.test
+*.out
+
+# Dev tooling
+.golangci.yaml
+.envrc
+.envrc.dist
+Makefile
+build/
+
+# Docs & specs (not needed in image)
+docs/
+specs/
+*.md
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Docker build itself
+Dockerfile*
+.dockerignore
+compose.yaml
+deployment/docker/config/traefik/
+
+# Test artifacts
+coverage/
+*.cover
+itest/
+
+# Worktrees
+.worktrees/
+worktrees/

@@ -1,0 +1,15 @@
+type: "object"
+required: ["interchange_id", "status", "message_summary"]
+properties:
+  interchange_id:
+    type: "string"
+    format: "uuid"
+  status:
+    type: "string"
+    enum: ["completed", "failed"]
+  error_detail:
+    type: "string"
+    nullable: true
+    description: "Populated only when status = failed"
+  message_summary:
+    $ref: "../../../common/entities/message-summary.yaml"

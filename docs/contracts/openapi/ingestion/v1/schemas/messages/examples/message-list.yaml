@@ -1,0 +1,19 @@
+summary: "Page of MSCONS messages"
+value:
+  items:
+    - id: "019426a0-abcd-7000-8000-000000000010"
+      interchange_id: "019426a0-1234-7000-8000-000000000001"
+      processing_version_id: "019426a0-5678-7000-8000-000000000002"
+      subscription_id: "019426a0-9999-7000-8000-000000000003"
+      message_type: "MSCONS"
+      message_reference: "1"
+      segments:
+        UNH:
+          message_reference: "1"
+          message_type: "MSCONS"
+        DTM:
+          - qualifier: "137"
+            value: "20250601"
+      created_at: "2025-06-15T10:30:05Z"
+  total: 1
+  next_cursor: null

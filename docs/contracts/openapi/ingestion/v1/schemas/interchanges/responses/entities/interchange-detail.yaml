@@ -1,0 +1,41 @@
+type: "object"
+required:
+  - "id"
+  - "sender_id"
+  - "receiver_id"
+  - "prepared_at"
+  - "reference"
+  - "status"
+  - "created_at"
+  - "active_version"
+properties:
+  id:
+    type: "string"
+    format: "uuid"
+  sender_id:
+    type: "string"
+  sender_qualifier:
+    type: "string"
+  receiver_id:
+    type: "string"
+  receiver_qualifier:
+    type: "string"
+  prepared_at:
+    type: "string"
+    format: "date-time"
+  reference:
+    type: "string"
+  status:
+    type: "string"
+    enum: ["completed", "failed"]
+  error_detail:
+    type: "string"
+    nullable: true
+  created_at:
+    type: "string"
+    format: "date-time"
+  active_version:
+    $ref: "processing-version-summary.yaml"
+  message_summary:
+    description: "Present when status = completed."
+    $ref: "../../../common/entities/message-summary.yaml"

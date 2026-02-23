@@ -1,0 +1,12 @@
+type: "object"
+required: ["items", "total"]
+properties:
+  items:
+    type: "array"
+    items:
+      $ref: "message.yaml"
+  total:
+    type: "integer"
+  next_cursor:
+    type: "string"
+    nullable: true

@@ -1,0 +1,15 @@
+type: "object"
+required: ["status", "checks"]
+properties:
+  status:
+    type: "string"
+    enum: ["healthy", "degraded", "unhealthy"]
+  checks:
+    type: "object"
+    properties:
+      postgres:
+        type: "string"
+        enum: ["ok", "error"]
+      kafka:
+        type: "string"
+        enum: ["ok", "error"]

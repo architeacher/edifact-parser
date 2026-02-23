@@ -1,0 +1,15 @@
+healthy:
+  summary: "All dependencies healthy"
+  value:
+    status: "healthy"
+    checks:
+      postgres: "ok"
+      kafka: "ok"
+
+degraded:
+  summary: "Kafka unavailable"
+  value:
+    status: "degraded"
+    checks:
+      postgres: "ok"
+      kafka: "error"

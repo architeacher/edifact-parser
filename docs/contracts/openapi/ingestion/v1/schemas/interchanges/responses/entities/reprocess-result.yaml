@@ -1,0 +1,16 @@
+type: "object"
+required: ["matched", "succeeded", "failed"]
+properties:
+  matched:
+    type: "integer"
+    description: "Number of interchanges matching the filter"
+  succeeded:
+    type: "integer"
+    description: "Number successfully reprocessed"
+  failed:
+    type: "integer"
+    description: "Number that failed during reprocessing"
+  failures:
+    type: "array"
+    items:
+      $ref: "reprocess-failure.yaml"

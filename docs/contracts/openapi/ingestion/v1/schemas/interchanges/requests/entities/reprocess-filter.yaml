@@ -1,0 +1,23 @@
+type: "object"
+description: >
+  At least one filter field should be provided. Omitting all fields
+  matches all interchanges (full corpus reprocessing).
+properties:
+  interchange_id:
+    type: "string"
+    format: "uuid"
+    description: "Reprocess a single interchange"
+  sender_id:
+    type: "string"
+    description: "Reprocess all interchanges from this sender"
+  message_type:
+    type: "string"
+    description: "Reprocess interchanges containing this message type"
+  from_date:
+    type: "string"
+    format: "date"
+    description: "Reprocess interchanges prepared on or after this date"
+  to_date:
+    type: "string"
+    format: "date"
+    description: "Reprocess interchanges prepared on or before this date"
