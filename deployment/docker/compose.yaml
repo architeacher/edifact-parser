@@ -1,0 +1,189 @@
+---
+# EDIFACT Ingestion System — Local Development Stack
+#
+# All services are accessed via Traefik host-based routing on *.ingestion.dev.
+# Add the following to /etc/hosts (or use dnsmasq/nss-mdns):
+#   127.0.0.1  api.ingestion.dev docs.ingestion.dev traefik.ingestion.dev
+#   127.0.0.1  jaeger.ingestion.dev prometheus.ingestion.dev
+
+x-default-secrets: &secrets
+  - source: root_cert_file
+    target: "/etc/ssl/certs/rootCA.pem"
+  - source: cert_file
+    target: "/etc/ssl/certs/ca-cert-star-ingestion-dev-crt.pem"
+  - source: key_file
+    target: "/etc/ssl/certs/ca-cert-star-ingestion-dev-key.pem"
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+x-traefik-labels: &traefik-defaults
+  traefik.enable: "true"
+  traefik.docker.network: ingestion
+
+networks:
+  ingestion:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  kafka-data:
+  prometheus-data:
+
+secrets:
+  root_cert_file:
+    file: "../../.certs/rootCA.pem"
+  cert_file:
+    file: "../../.certs/star-ingestion-dev.crt"
+  key_file:
+    file: "../../.certs/star-ingestion-dev.key"
+
+services:
+
+  traefik:
+    image: traefik:v3
+    <<: *default-restart
+    ports:
+      - "80:80"
+      - "443:443"
+    secrets: *secrets
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config/traefik/static.yaml:/etc/traefik/traefik.yaml:ro
+      - ./config/traefik/dynamic.yaml:/etc/traefik/dynamic.yaml:ro
+    networks:
+      - ingestion
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --spider -S --tries=1 http://localhost:8083/ping"]
+      interval: 10s
+      retries: 5
+      start_period: 1s
+      timeout: 1s
+    labels:
+      <<: *traefik-defaults
+      traefik.http.routers.traefik-dashboard.rule: "Host(`traefik.ingestion.dev`)"
+      traefik.http.routers.traefik-dashboard.entrypoints: "websecure"
+      traefik.http.routers.traefik-dashboard.tls: "true"
+      traefik.http.routers.traefik-dashboard.service: "api@internal"
+
+  postgres:
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres
+    <<: *default-restart
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-ingestion}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-ingestion}"
+      POSTGRES_DB: "${POSTGRES_DB:-ingestion}"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - ingestion
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ingestion} -d ${POSTGRES_DB:-ingestion}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Kafka (KRaft — no Zookeeper) ─────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    <<: *default-restart
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_DEFAULT_REPLICATION_FACTOR: "1"
+      KAFKA_NUM_PARTITIONS: "4"
+      CLUSTER_ID: "MkQkRDdjNTdkMGE1ZWQwMmI"
+    volumes:
+      - kafka-data:/bitnami/kafka
+    networks:
+      - ingestion
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  migrate:
+    image: migrate/migrate:v4.19.1
+    networks:
+      - ingestion
+    volumes:
+      - ../../services/svc-ingestion/migrations:/migrations
+    command: [
+      "-path", "/migrations",
+      "-database", "postgres://${POSTGRES_USER:-ingestion}:${POSTGRES_PASSWORD:-ingestion}@postgres:5432/${POSTGRES_DB:-ingestion}?sslmode=disable",
+      "up"
+    ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    logging: *default-logging
+
+  svc-ingestion:
+    build:
+      context: ../..
+      dockerfile: services/svc-ingestion/deployment/docker/Dockerfile
+      target: prod
+    <<: *default-restart
+    env_file:
+      - path: ../../services/svc-ingestion/.envrc
+        required: false
+      - path: ../../services/svc-ingestion/.envrc.dist
+        required: false
+    networks:
+      - ingestion
+    logging: *default-logging
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/svc-ingestion", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    labels:
+      <<: *traefik-defaults
+      traefik.http.routers.svc-ingestion.rule: "Host(`api.ingestion.dev`)"
+      traefik.http.routers.svc-ingestion.entrypoints: "websecure"
+      traefik.http.routers.svc-ingestion.tls: "true"
+      traefik.http.services.svc-ingestion.loadbalancer.server.port: "8080"
+
+  swagger-ui:
+    image: swaggerapi/swagger-ui:latest
+    <<: *default-restart
+    environment:
+      SWAGGER_JSON_URL: "/openapi/swagger-pact.json"
+    volumes:
+      - ../../docs/contracts/openapi/ingestion/v1/public/swagger-pact.json:/usr/share/nginx/html/openapi/swagger-pact.json:ro
+    networks:
+      - ingestion
+    logging: *default-logging
+    labels:
+      <<: *traefik-defaults
+      traefik.http.routers.swagger.rule: "Host(`docs.ingestion.dev`)"
+      traefik.http.routers.swagger.entrypoints: "websecure"
+      traefik.http.routers.swagger.tls: "true"
+      traefik.http.services.swagger.loadbalancer.server.port: "8080"

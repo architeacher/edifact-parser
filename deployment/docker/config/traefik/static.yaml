@@ -1,0 +1,74 @@
+---
+# Traefik v3 static configuration — local development
+
+api:
+  dashboard: true
+  debug: true
+  disableDashboardAd: true
+  insecure: true
+
+accessLog:
+  bufferingSize: 50
+  format: json
+  filters:
+    statusCodes:
+      - 3xx
+      - 4xx
+      - 5xx
+    retryAttempts: true
+    minDuration: 302s
+
+entryPoints:
+  ping:
+    address: ":8083"
+
+  web:
+    address: ":80"
+    forwardedHeaders:
+      insecure: true
+    http:
+      redirections:
+        entrypoint:
+          to: websecure
+          scheme: https
+
+  websecure:
+    address: ":443"
+
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
+
+log:
+  level: "INFO"
+
+ping:
+  entryPoint: "ping"
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: "ingestion"
+    watch: true
+  file:
+    debugLogGeneratedTemplate: true
+    directory: /etc/traefik
+    filename: dynamic.yaml
+    watch: true
+  http:
+    tls:
+      insecureSkipVerify: true
+
+serversTransport:
+  insecureSkipVerify: true
+  rootCAs:
+    - "/etc/ssl/certs/rootCA.pem"
+  maxIdleConnsPerHost: 10
+  forwardingTimeouts:
+    dialTimeout: 10s
+    responseHeaderTimeout: 10s
+    idleConnTimeout: 10s
+
+metrics:
+  prometheus: {}

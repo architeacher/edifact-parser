@@ -1,0 +1,25 @@
+root = "/app"
+tmp_dir = "tmp"
+
+[build]
+  bin = "./tmp/svc-ingestion"
+  cmd = "go build -o ./tmp/svc-ingestion ./cmd/svc-ingestion/"
+  delay = 1000
+  exclude_dir = ["tmp", "testdata", "itest", "vendor", "mocks"]
+  exclude_file = []
+  exclude_regex = ["_test\\.go$", "_gen\\.go$"]
+  exclude_unchanged = false
+  follow_symlink = false
+  full_bin = ""
+  include_dir = ["cmd", "internal", "pkg"]
+  include_ext = ["go", "yaml"]
+  kill_delay = "1s"
+  log = "build-errors.log"
+  send_interrupt = true
+  stop_on_error = true
+
+[log]
+  time = false
+
+[misc]
+  clean_on_exit = true
