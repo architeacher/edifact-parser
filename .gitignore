@@ -36,3 +36,6 @@ worktrees/
 
 # Docker volumes (if any local mounts)
 .docker/
+
+# Specify scaffolding
+.specify/

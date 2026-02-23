@@ -1,0 +1,21 @@
+http:
+  routers:
+    api:
+      rule: hostregexp(`{host:.+}`)
+      entrypoints:
+        - web
+      service: api@internal
+      middlewares:
+        - redirect-to-https
+      tls: {}
+
+  middlewares:
+    redirect-to-https:
+      redirectScheme:
+        permanent: true
+        scheme: https
+
+tls:
+  certificates:
+    - certFile: "/etc/ssl/certs/ca-cert-star-ingestion-dev-crt.pem"
+      keyFile: "/etc/ssl/certs/ca-cert-star-ingestion-dev-key.pem"

@@ -1,0 +1,10 @@
+FROM postgres:16-alpine AS builder
+
+RUN apk add --no-cache git build-base postgresql-dev && \
+    git clone --depth 1 https://github.com/fboulnois/pg_uuidv7.git /tmp/pg_uuidv7 && \
+    cd /tmp/pg_uuidv7 && make USE_PGXS=1 with_llvm=no && make USE_PGXS=1 with_llvm=no install
+
+FROM postgres:16-alpine
+
+COPY --from=builder /usr/local/lib/postgresql/pg_uuidv7.so /usr/local/lib/postgresql/
+COPY --from=builder /usr/local/share/postgresql/extension/pg_uuidv7* /usr/local/share/postgresql/extension/

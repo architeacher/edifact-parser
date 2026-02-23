@@ -1,0 +1,140 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - cyclop
+    - decorder
+    - errcheck
+    - errname
+    - exhaustruct
+    - gocognit
+    - goconst
+    - gocritic
+    - misspell
+    - nonamedreturns
+    - prealloc
+    - revive
+    - unconvert
+    - unparam
+    - usestdlibvars
+    - wastedassign
+    - wrapcheck
+  # TODO(phase2): Re-enable grouper after resolving gofumpt conflict (grouper wants grouped vars, gofumpt wants ungrouped)
+
+  settings:
+    cyclop:
+      max-complexity: 15
+
+    decorder:
+      dec-order:
+        - const
+        - type
+        - var
+        - func
+      disable-dec-order-check: false
+      disable-init-func-first-check: false
+      disable-dec-num-check: true
+
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+
+    exhaustruct:
+      exclude:
+        - "^net/http\\.Client$"
+        - "^net/http\\.Transport$"
+        - "^net/http\\.Server$"
+        - "^github\\.com/prometheus/client_golang/prometheus/promhttp\\.HandlerOpts$"
+        - ".*/runtime\\.ServiceCtx$"
+        - ".*/runtime\\.dependencies$"
+
+    gocognit:
+      min-complexity: 20
+
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+
+    grouper:
+      const-require-single-const: false
+      const-require-grouping: true
+      import-require-single-import: true
+      import-require-grouping: true
+      type-require-single-type: false
+      type-require-grouping: true
+      var-require-single-var: false
+      var-require-grouping: true
+
+    misspell:
+      locale: US
+
+    nonamedreturns:
+      report-error-in-defer: true
+
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: var-declaration
+        - name: var-naming
+
+    wrapcheck:
+      ignore-sig-regexp:
+        - "\\.Unwrap\\("
+        - "errors\\.New\\("
+        - "errors\\.Unwrap\\("
+        - "\\.GracefulStop\\("
+
+  exclusions:
+    presets:
+      - std-error-handling
+    paths:
+      - "third_party$"
+      - "builtin$"
+      - "examples$"
+    rules:
+      - path: "_test\\.go"
+        linters:
+          - exhaustruct
+          - nonamedreturns
+          - wrapcheck
+          - errcheck
+      - path: "mocks/"
+        linters:
+          - exhaustruct
+          - wrapcheck
+      - path: "_gen\\.go"
+        linters:
+          - exhaustruct
+          - wrapcheck
+          - revive
+          - gocritic
+
+formatters:
+  enable:
+    - gofumpt
+  settings:
+    gofumpt:
+      extra-rules: true
+  exclusions:
+    paths:
+      - "third_party$"
+      - "builtin$"
+      - "_gen\\.go"
+
+output:
+  formats:
+    text:
+      print-linter-name: true
